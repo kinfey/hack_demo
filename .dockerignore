@@ -1,0 +1,8 @@
+.git
+.pytest_cache
+.ruff_cache
+__pycache__
+data
+teams_app/node_modules
+teams_app/dist
+.env

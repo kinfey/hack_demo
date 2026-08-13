@@ -1,0 +1,17 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.azure/
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.py[cod]
+*.zip
+
+teams_app/.env
+teams_app/.env.*
+!teams_app/.env.example
+teams_app/node_modules/
+teams_app/dist/

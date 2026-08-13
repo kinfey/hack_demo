@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "budget-evaluation-agent"
+version = "0.1.0"
+description = "Engineering budget evaluation agent exposed through MCP and Microsoft Teams"
+requires-python = ">=3.12"
+dependencies = [
+  "agent-framework-core==1.12.0",
+  "agent-framework-github-copilot==1.0.0rc4",
+  "github-copilot-sdk==1.0.2",
+  "mcp==1.28.1",
+  "openpyxl==3.1.5",
+  "pydantic>=2.11,<3",
+  "python-dotenv>=1.1,<2",
+  "starlette>=0.46,<1",
+  "uvicorn>=0.34,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.26,<1",
+  "ruff>=0.11,<1",
+]
+azure = [
+  "azure-containerapps-sandbox",
+  "azure-identity",
+  "azure-mgmt-authorization",
+  "azure-mgmt-resource",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
