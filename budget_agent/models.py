@@ -13,6 +13,7 @@ Decision = Literal[
     "significant_concern",
     "benchmark_missing",
 ]
+TrafficLight = Literal["green", "yellow", "red", "gray"]
 
 
 class Comparison(BaseModel):
@@ -23,6 +24,7 @@ class Comparison(BaseModel):
     benchmark_unit_rate_usd_sqm: float | None = None
     variance_pct: float | None = None
     decision: Decision
+    status_color: TrafficLight
 
 
 class VendorAssessment(BaseModel):
@@ -31,6 +33,7 @@ class VendorAssessment(BaseModel):
     unit_rate_usd_sqm: float
     per_budget_variance_pct: float
     per_budget_decision: Decision
+    per_budget_status_color: TrafficLight
     recommended_value_usd: float
     potential_savings_usd: float
     qs_comparisons: list[Comparison]

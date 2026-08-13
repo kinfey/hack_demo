@@ -35,7 +35,7 @@ def test_sample_workbook_matches_summary_baseline() -> None:
     assert report.unmatched_vendor_items == []
 
 
-def test_vendor_c_is_only_vendor_within_ten_percent_of_per_budget() -> None:
+def test_per_budget_decisions_follow_output_thresholds() -> None:
     report = evaluate_workbook(SAMPLE.read_bytes(), SAMPLE.name)
     decisions = {vendor.vendor: vendor.per_budget_decision for vendor in report.vendors}
     assert decisions == {
@@ -45,3 +45,34 @@ def test_vendor_c_is_only_vendor_within_ten_percent_of_per_budget() -> None:
         "Vendor D": "conditional_approval",
         "Vendor E": "conditional_approval",
     }
+    colors = {vendor.vendor: vendor.per_budget_status_color for vendor in report.vendors}
+    assert colors == {
+        "Vendor A": "green",
+        "Vendor B": "yellow",
+        "Vendor C": "green",
+        "Vendor D": "yellow",
+        "Vendor E": "yellow",
+    }
+
+
+def test_output_comparisons_include_traffic_light_statuses() -> None:
+    report = evaluate_workbook(SAMPLE.read_bytes(), SAMPLE.name)
+    decision_colors = {
+        "reasonable": "green",
+        "review_required": "yellow",
+        "significant_concern": "red",
+        "benchmark_missing": "gray",
+    }
+    qs_colors: set[str] = set()
+    historical_colors: set[str] = set()
+
+    for vendor in report.vendors:
+        for comparison in vendor.qs_comparisons:
+            assert comparison.status_color == decision_colors[comparison.decision]
+            qs_colors.add(comparison.status_color)
+        for comparison in vendor.historical_comparisons:
+            assert comparison.status_color == decision_colors[comparison.decision]
+            historical_colors.add(comparison.status_color)
+
+    assert qs_colors == {"green", "yellow", "red", "gray"}
+    assert historical_colors == {"green", "yellow", "red", "gray"}

@@ -104,6 +104,21 @@ answers follow-up questions from the structured results.
 
 Unmapped priced rows and missing benchmarks are reported explicitly.
 
+## OUTPUT-style dashboard
+
+The MCP report and Teams Adaptive Card follow the workbook `OUTPUT` tab:
+
+- Page 1 — Vendor total versus PER Budget
+- Page 2 — Vendor mapped category amount versus QS Estimate
+- Page 3 — Vendor mapped category USD/Sqm versus Historical Unit Rate
+
+Traffic-light indicators are consistent across the structured JSON and Teams UI:
+
+- 🟢 Green — approve / reasonable
+- 🟡 Yellow — conditional approval / review required
+- 🔴 Red — reject / significant cost concern
+- ⚪ Gray — benchmark missing
+
 ## Local validation
 
 ```bash

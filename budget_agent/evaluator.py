@@ -10,7 +10,13 @@ from typing import Any
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from budget_agent.models import BudgetEvaluation, Comparison, Decision, VendorAssessment
+from budget_agent.models import (
+    BudgetEvaluation,
+    Comparison,
+    Decision,
+    TrafficLight,
+    VendorAssessment,
+)
 
 REQUIRED_SHEETS = {
     "Summary",
@@ -94,6 +100,16 @@ def _total_decision(variance: float) -> Decision:
     if absolute <= 0.20:
         return "conditional_approval"
     return "reject"
+
+
+def _status_color(decision: Decision) -> TrafficLight:
+    if decision in {"approve", "reasonable"}:
+        return "green"
+    if decision in {"conditional_approval", "review_required"}:
+        return "yellow"
+    if decision in {"reject", "significant_concern"}:
+        return "red"
+    return "gray"
 
 
 def _vendor_table(
@@ -213,10 +229,12 @@ def evaluate_workbook(content: bytes, filename: str) -> BudgetEvaluation:
                         vendor_amount_usd=amount,
                         vendor_unit_rate_usd_sqm=unit_rate,
                         decision="benchmark_missing",
+                        status_color="gray",
                     )
                 )
             else:
                 variance = amount / qs_amount - 1
+                decision = _decision(variance, 0.05, 0.15)
                 qs_comparisons.append(
                     Comparison(
                         category=category,
@@ -225,7 +243,8 @@ def evaluate_workbook(content: bytes, filename: str) -> BudgetEvaluation:
                         benchmark_amount_usd=qs_amount,
                         benchmark_unit_rate_usd_sqm=qs_amount / area,
                         variance_pct=variance,
-                        decision=_decision(variance, 0.05, 0.15),
+                        decision=decision,
+                        status_color=_status_color(decision),
                     )
                 )
 
@@ -237,10 +256,12 @@ def evaluate_workbook(content: bytes, filename: str) -> BudgetEvaluation:
                         vendor_amount_usd=amount,
                         vendor_unit_rate_usd_sqm=unit_rate,
                         decision="benchmark_missing",
+                        status_color="gray",
                     )
                 )
             else:
                 variance = unit_rate / historical_rate - 1
+                decision = _decision(variance, 0.05, 0.15)
                 historical_comparisons.append(
                     Comparison(
                         category=category,
@@ -248,17 +269,20 @@ def evaluate_workbook(content: bytes, filename: str) -> BudgetEvaluation:
                         vendor_unit_rate_usd_sqm=unit_rate,
                         benchmark_unit_rate_usd_sqm=historical_rate,
                         variance_pct=variance,
-                        decision=_decision(variance, 0.05, 0.15),
+                        decision=decision,
+                        status_color=_status_color(decision),
                     )
                 )
 
+        total_decision = _total_decision(total_variance)
         vendors.append(
             VendorAssessment(
                 vendor=vendor,
                 total_amount_usd=total,
                 unit_rate_usd_sqm=total / area,
                 per_budget_variance_pct=total_variance,
-                per_budget_decision=_total_decision(total_variance),
+                per_budget_decision=total_decision,
+                per_budget_status_color=_status_color(total_decision),
                 recommended_value_usd=min(total, per_total),
                 potential_savings_usd=max(total - per_total, 0.0),
                 qs_comparisons=qs_comparisons,

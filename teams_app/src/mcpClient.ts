@@ -4,8 +4,13 @@ import { config } from "./config";
 
 export interface Comparison {
   category: string;
+  vendor_amount_usd: number;
+  vendor_unit_rate_usd_sqm: number;
+  benchmark_amount_usd: number | null;
+  benchmark_unit_rate_usd_sqm: number | null;
   variance_pct: number | null;
   decision: string;
+  status_color: "green" | "yellow" | "red" | "gray";
 }
 
 export interface VendorAssessment {
@@ -14,6 +19,8 @@ export interface VendorAssessment {
   unit_rate_usd_sqm: number;
   per_budget_variance_pct: number;
   per_budget_decision: string;
+  per_budget_status_color: "green" | "yellow" | "red";
+  recommended_value_usd: number;
   potential_savings_usd: number;
   qs_comparisons: Comparison[];
   historical_comparisons: Comparison[];
