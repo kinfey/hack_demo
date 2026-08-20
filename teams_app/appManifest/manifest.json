@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "id": "${{MICROSOFT_APP_ID}}",
   "developer": {
     "name": "Engineering Budget Agent",
@@ -18,8 +18,8 @@
     "full": "Engineering Budget Evaluation Agent"
   },
   "description": {
-    "short": "通过 Excel 评估工程预算与 Vendor 报价。",
-    "full": "上传工程预算 Excel，按 PER Budget、QS Estimation、Vendor Mapping Rules 和 Historical Unit Rates 进行 Sqm 单价及偏差评估，并在 Teams 会话中追问。"
+    "short": "Evaluate engineering budgets and vendor quotations.",
+    "full": "Upload PDF, Word, or Excel budget sources. The agent evaluates PER Budget, QS Estimate, vendor quotations, mapping rules, and historical unit rates, then supports follow-up questions in Teams."
   },
   "accentColor": "#0F6CBD",
   "bots": [
@@ -32,7 +32,8 @@
         {
           "scopes": ["personal", "team", "groupChat"],
           "commands": [
-            { "title": "help", "description": "显示 Excel 上传和评估说明" }
+            { "title": "help", "description": "Show upload requirements and evaluation guidance" },
+            { "title": "files", "description": "List source documents available for RAG questions" }
           ]
         }
       ]

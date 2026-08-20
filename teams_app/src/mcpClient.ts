@@ -26,6 +26,25 @@ export interface VendorAssessment {
   historical_comparisons: Comparison[];
 }
 
+export interface FieldComparison {
+  expected: string;
+  offered: string;
+  status: "match" | "review" | "mismatch" | "missing";
+  note: string;
+}
+
+export interface ScopeComparison {
+  vendor: string;
+  vendor_item: string;
+  qs_item: string | null;
+  construction_scope: FieldComparison;
+  specification: FieldComparison;
+  brand: FieldComparison;
+  quantity_unit: FieldComparison;
+  overall_status: "green" | "yellow" | "red" | "gray";
+  recommendation: string;
+}
+
 export interface BudgetReport {
   report_id: string;
   project_name: string;
@@ -35,8 +54,21 @@ export interface BudgetReport {
   historical_weighted_unit_rate_usd_sqm: number;
   vendors: VendorAssessment[];
   unmatched_vendor_items: string[];
+  scope_comparisons: ScopeComparison[];
   warnings: string[];
   executive_summary: string | null;
+  document_names: string[];
+}
+
+export interface UploadedBudgetDocument {
+  filename: string;
+  content: Buffer;
+}
+
+export interface SourceStatus {
+  complete: boolean;
+  recognized_sources: Array<{ id: string; name: string }>;
+  missing_sources: Array<{ id: string; name: string }>;
 }
 
 class BudgetMcpClient {
@@ -61,16 +93,36 @@ class BudgetMcpClient {
     return JSON.parse(text) as T;
   }
 
-  async evaluate(filename: string, content: Buffer): Promise<BudgetReport> {
+  private documentArguments(documents: UploadedBudgetDocument[]) {
+    return documents.map((document) => ({
+      filename: document.filename,
+      file_base64: document.content.toString("base64"),
+    }));
+  }
+
+  async inspect(documents: UploadedBudgetDocument[]): Promise<SourceStatus> {
     return this.withClient(async (client) => {
       const result = await client.callTool(
         {
-          name: "evaluate_budget_workbook",
+          name: "inspect_budget_documents",
+          arguments: { documents: this.documentArguments(documents) },
+        },
+        undefined,
+        { timeout: config.mcpTimeoutMs, resetTimeoutOnProgress: true }
+      );
+      return this.structured<SourceStatus>(result);
+    });
+  }
+
+  async evaluate(documents: UploadedBudgetDocument[]): Promise<BudgetReport> {
+    return this.withClient(async (client) => {
+      const result = await client.callTool(
+        {
+          name: "evaluate_budget_documents",
           arguments: {
-            filename,
-            file_base64: content.toString("base64"),
+            documents: this.documentArguments(documents),
             include_ai_summary: true,
-            language: "zh-CN",
+            language: "en-US",
           },
         },
         undefined,
@@ -80,12 +132,17 @@ class BudgetMcpClient {
     });
   }
 
-  async ask(reportId: string, question: string): Promise<string> {
+  async ask(reportId: string, question: string, filename?: string): Promise<string> {
     return this.withClient(async (client) => {
       const result = await client.callTool(
         {
           name: "ask_budget_report",
-          arguments: { report_id: reportId, question, language: "zh-CN" },
+          arguments: {
+            report_id: reportId,
+            question,
+            language: "zh-CN",
+            ...(filename ? { filename } : {}),
+          },
         },
         undefined,
         { timeout: config.mcpTimeoutMs, resetTimeoutOnProgress: true }

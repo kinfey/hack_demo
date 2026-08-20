@@ -12,6 +12,9 @@ import uuid
 from pathlib import Path
 
 from azure.containerapps.sandbox import (
+    AutoDeletePolicy,
+    AutoSuspendPolicy,
+    LifecyclePolicy,
     SandboxGroupClient,
     SandboxGroupManagementClient,
     endpoint_for_region,
@@ -139,7 +142,6 @@ def main() -> int:
         disk="copilot",
         cpu="2000m",
         memory="4096Mi",
-        auto_suspend_seconds=3600,
         labels={"name": SANDBOX_GROUP, "service": "budget-mcp"},
         environment={
             "COPILOT_GITHUB_TOKEN": token,
@@ -147,6 +149,12 @@ def main() -> int:
             "PORT": str(PORT),
         },
     ).result()
+    sandbox.set_lifecycle_policy(
+        LifecyclePolicy(
+            auto_suspend=AutoSuspendPolicy(enabled=False),
+            auto_delete=AutoDeletePolicy(enabled=False),
+        )
+    )
     sandbox.write_file("/home/user/budget-agent.tar.gz", archive())
     commands = [
         "mkdir -p /home/user/budget-agent",
@@ -166,6 +174,7 @@ def main() -> int:
         "agent-framework-github-copilot==1.0.0rc4 "
         "github-copilot-sdk==1.0.2 "
         "mcp==1.28.1 openpyxl==3.1.5 "
+        "\"pypdf>=5.4,<6\" \"python-docx>=1.1,<2\" \"xlrd>=2.0,<3\" "
         "\"pydantic>=2.11,<3\" \"python-dotenv>=1.1,<2\" "
         "\"starlette>=0.46,<1\" \"uvicorn>=0.34,<1\"; "
         "echo $? >/tmp/budget-install.exit"
