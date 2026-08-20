@@ -2,9 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from budget_agent.evaluator import evaluate_workbook
+from budget_agent.evaluator import evaluate_structured_input, evaluate_workbook
+from budget_agent.models import QSRequirementRow, StructuredBudgetInput, VendorQuoteRow
 
-SAMPLE = Path("data/COST-0813.xlsx")
+SAMPLE = Path("data/General Version.xlsx")
 
 
 def test_sample_workbook_matches_summary_baseline() -> None:
@@ -76,3 +77,47 @@ def test_output_comparisons_include_traffic_light_statuses() -> None:
 
     assert qs_colors == {"green", "yellow", "red", "gray"}
     assert historical_colors == {"green", "yellow", "red", "gray"}
+
+
+def test_qs_vendor_scope_comparison_flags_brand_and_quantity_differences() -> None:
+    data = StructuredBudgetInput(
+        project_name="Scope comparison",
+        construction_area_sqm=1000,
+        per_budget={"Electrical": 100000},
+        qs_estimate={"Electrical": 100000},
+        historical_unit_rates={"Electrical": 100},
+        mappings={"Lighting installation": "Electrical"},
+        qs_rows=[
+            QSRequirementRow(
+                description="Electrical",
+                construction_scope="Supply and install light fixtures",
+                specification="LED 4000K, IP44",
+                brand="Philips",
+                quantity=100,
+                unit="sets",
+            )
+        ],
+        vendor_rows=[
+            VendorQuoteRow(
+                description="Lighting installation",
+                vendor="Vendor A",
+                amounts_usd={"Vendor A": 110000},
+                construction_scope="Supply and install light fixtures",
+                specification="LED 4000K, IP44",
+                brand="Generic",
+                quantity=80,
+                unit="sets",
+            )
+        ],
+    )
+
+    report = evaluate_structured_input(data, "sources", b"scope-comparison")
+    comparison = report.scope_comparisons[0]
+
+    assert comparison.construction_scope.status == "match"
+    assert comparison.specification.status == "match"
+    assert comparison.brand.status == "mismatch"
+    assert comparison.quantity_unit.status == "mismatch"
+    assert comparison.overall_status == "red"
+    assert "brand" in comparison.recommendation
+    assert "quantity/unit" in comparison.recommendation

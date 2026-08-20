@@ -13,10 +13,13 @@ dependencies = [
   "github-copilot-sdk==1.0.2",
   "mcp==1.28.1",
   "openpyxl==3.1.5",
+  "pypdf>=5.4,<6",
   "pydantic>=2.11,<3",
+  "python-docx>=1.1,<2",
   "python-dotenv>=1.1,<2",
   "starlette>=0.46,<1",
   "uvicorn>=0.34,<1",
+  "xlrd>=2.0,<3",
 ]
 
 [project.optional-dependencies]
@@ -35,6 +38,9 @@ azure = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["budget_agent*"]
 
 [tool.ruff]
 line-length = 110
