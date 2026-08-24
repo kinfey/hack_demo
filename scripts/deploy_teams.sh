@@ -13,11 +13,12 @@ ENVIRONMENT="${AZURE_CONTAINERAPP_ENV:-aca-env-budget-agent}"
 APP="${AZURE_TEAMS_APP_NAME:-aca-teams-budget-agent}"
 BOT="${AZURE_BOT_NAME:-bot-budget-agent-${SUFFIX}}"
 APP_DISPLAY_NAME="${AZURE_BOT_APP_DISPLAY_NAME:-Engineering Budget Agent}"
-IMAGE="${ACR}.azurecr.io/engineering-budget-teams:latest"
+IMAGE_TAG="${AZURE_IMAGE_TAG:-$(date -u +%Y%m%d%H%M%S)}"
+IMAGE="${ACR}.azurecr.io/engineering-budget-teams:${IMAGE_TAG}"
 
 az acr show -g "$RG" -n "$ACR" >/dev/null 2>&1 \
   || az acr create -g "$RG" -n "$ACR" -l "$LOCATION" --sku Basic --admin-enabled false -o none
-az acr build -r "$ACR" -t engineering-budget-teams:latest teams_app --no-logs -o none
+az acr build -r "$ACR" -t "engineering-budget-teams:${IMAGE_TAG}" teams_app --no-logs -o none
 az containerapp env show -g "$RG" -n "$ENVIRONMENT" >/dev/null 2>&1 \
   || az containerapp env create -g "$RG" -n "$ENVIRONMENT" -l "$LOCATION" -o none
 

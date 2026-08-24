@@ -12,77 +12,56 @@ follow-up questions with report-scoped RAG over the uploaded source files.
 
 ## Architecture
 
-```text
-┌───────────────────────────────┐
-│  User / Microsoft Teams      │
-│  Uploads PDF/Word/Excel       │
-│  budget source documents      │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│  Teams App                    │
-│  - Accumulates attachments    │
-│  - Prompts for missing input  │
-│  - Stores conversation report │
-│  - Sends follow-up questions  │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│  MCP Client                   │
-│  - Calls evaluate_budget_     │
-│    workbook tool              │
-│  - Calls ask_budget_report    │
-│  - Uses Streamable HTTP      │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│  Budget Evaluation MCP        │
-│  - /mcp endpoint             │
-│  - Validates source coverage  │
-│  - Caches reports            │
-│  - Returns structured data   │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│  Deterministic Evaluation     │
-│  - Reads PER / QS / History  │
-│  - Maps vendor WBS rows      │
-│  - Normalizes USD/Sqm        │
-│  - Calculates variance       │
-│  - Produces vendor decisions  │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│  Structured Report Model     │
-│  - Project metadata          │
-│  - Vendor totals              │
-│  - Category comparisons       │
-│  - Warnings and unmatched     │
-│    items                     │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│  AI Summary Layer             │
-│  - GitHub Copilot model      │
-│  - Generates executive       │
-│    recommendation            │
-│  - Answers follow-up Q&A     │
-└──────────────┬────────────────┘
-               │
-               ▼
-┌───────────────────────────────┐
-│  Response Back to User       │
-│  - Evaluation card           │
-│  - Summary narrative         │
-│  - Chat follow-up answers    │
-└───────────────────────────────┘
-```
+### Application flow
+
+**Microsoft Teams user**
+→ uploads PDF, Word, or Excel sources
+→ **Teams bot**
+→ validates source coverage through the **MCP client**
+→ requests any missing PER, QS, quotation, mapping, history, or summary source
+→ calls the **Budget Evaluation MCP service**
+→ runs deterministic comparison and model-assisted document normalization
+→ returns a structured four-page report and executive recommendation
+→ renders **Teams Adaptive Cards**
+→ supports report-scoped follow-up Q&A and approval.
+
+| Stage | Component | Responsibility | State |
+|---|---|---|---|
+| 1 | Microsoft Teams | File upload, chat questions, and approval actions | Teams conversation |
+| 2 | Teams bot (`teams_app/src/teamsBot.ts`) | Accumulates attachments, tracks report IDs, routes follow-up questions, and replaces approved cards with a completed state | Bounded in-memory conversation and approval maps |
+| 3 | Adaptive Card layer (`teams_app/src/cards.ts`) | Upload guidance, four-page evaluation dashboard, errors, and idempotent approval completion UI | Card payload |
+| 4 | MCP client (`teams_app/src/mcpClient.ts`) | Calls inspection, evaluation, and report Q&A tools over Streamable HTTP | Request scoped |
+| 5 | MCP server (`budget_agent/server.py`) | Exposes `/mcp`, validates source completeness, coordinates evaluation, and caches reports and document chunks | Bounded in-memory report cache |
+| 6 | Document pipeline (`budget_agent/documents.py`) | Decodes PDF, Word, and Excel files, identifies source types, chunks content, and retrieves report evidence | Report scoped |
+| 7 | Evaluation engine (`budget_agent/evaluator.py`) | Maps vendor WBS rows, normalizes USD/Sqm, calculates variances, and assigns traffic-light decisions | Deterministic structured model |
+| 8 | AI layer (`budget_agent/agent.py`) | Uses GitHub Copilot `gpt-5.6-sol` to normalize non-workbook inputs, generate the executive narrative, and answer grounded questions | Ephemeral agent session |
+
+### Azure deployment topology
+
+| Azure resource | Deployed workload | Connection |
+|---|---|---|
+| Microsoft Entra ID application | Single-tenant bot identity and credential | Authenticates Azure Bot Service requests to the Teams bot |
+| Azure Bot Service + Teams channel | Teams registration and messaging endpoint | Sends activities to `https://<teams-container-app>/api/messages` |
+| Azure Container App | Node.js 20 Teams bot image | Pulls from ACR and calls the MCP endpoint through `MCP_URL` |
+| Azure Container Registry | Versioned `engineering-budget-teams:<timestamp>` images | Supplies immutable Teams bot revisions |
+| Azure Container Apps Sandbox | Python 3.12 Budget Evaluation MCP service | Exposes anonymous HTTPS Streamable HTTP at `/mcp` |
+| GitHub Copilot SDK | `gpt-5.6-sol` model access inside the Sandbox | Receives normalized document content or deterministic report JSON |
+
+**Runtime request path**
+→ Teams channel
+→ Azure Bot Service
+→ Teams Container App `/api/messages`
+→ Sandbox MCP `/mcp`
+→ document and evaluation pipeline
+→ GitHub Copilot model when extraction, summary, or grounded Q&A is required
+→ Adaptive Card or chat response returned through the same path.
+
+**Approval path**
+→ user selects **Approve** on an Adaptive Card
+→ Teams sends an Adaptive Card invoke or submit activity
+→ the bot derives a stable conversation/action key
+→ duplicate approvals return the existing result
+→ the original card is replaced with approver, timestamp, and completed status.
 
 ### Key components
 

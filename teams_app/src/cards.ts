@@ -9,6 +9,12 @@ import {
 
 type TrafficLight = "green" | "yellow" | "red" | "gray";
 
+export interface ApprovalResult {
+  title: string;
+  approvedBy: string;
+  approvedAt: string;
+}
+
 const usd = (value: number) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -243,6 +249,11 @@ function fieldColor(status: "match" | "review" | "mismatch" | "missing"): Traffi
 }
 
 export function reportCard(report: BudgetReport): Attachment {
+  const approvalData = {
+    approvalId: report.report_id,
+    reportId: report.report_id,
+    title: `${report.project_name} budget recommendation`,
+  };
   return CardFactory.adaptiveCard({
     type: "AdaptiveCard",
     version: "1.5",
@@ -312,6 +323,19 @@ export function reportCard(report: BudgetReport): Attachment {
         text: `Report ID: ${report.report_id}. Ask questions across all uploaded files, including calculations. Use [filename] question to chat with one file, or type files to list available documents.`,
         isSubtle: true,
         wrap: true,
+      },
+    ],
+    actions: [
+      {
+        type: "Action.Execute",
+        title: "Approve",
+        verb: "approve",
+        data: approvalData,
+        fallback: {
+          type: "Action.Submit",
+          title: "Approve",
+          data: { ...approvalData, action: "approve" },
+        },
       },
     ],
   });
@@ -384,4 +408,37 @@ export function errorCard(title: string, detail: string): Attachment {
       { type: "TextBlock", text: detail, wrap: true },
     ],
   });
+}
+
+export function approvalCompletedCard(result: ApprovalResult): Attachment {
+  return CardFactory.adaptiveCard(approvalCompletedCardContent(result));
+}
+
+export function approvalCompletedCardContent(result: ApprovalResult) {
+  return {
+    type: "AdaptiveCard",
+    version: "1.5",
+    body: [
+      {
+        type: "TextBlock",
+        text: "✅ Approved",
+        weight: "Bolder",
+        size: "Medium",
+        color: "Good",
+      },
+      {
+        type: "TextBlock",
+        text: result.title,
+        wrap: true,
+      },
+      {
+        type: "FactSet",
+        facts: [
+          { title: "Approved by", value: result.approvedBy },
+          { title: "Approved at", value: result.approvedAt },
+          { title: "Status", value: "Completed — no further action is required" },
+        ],
+      },
+    ],
+  };
 }
