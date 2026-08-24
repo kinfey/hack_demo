@@ -1,5 +1,7 @@
 # Engineering Budget Evaluation Agent
 
+![arch](./imgs/arch.png)
+
 Microsoft Agent Framework + GitHub Copilot SDK (`gpt-5.6-sol`) solution for evaluating engineering
 budget source documents through MCP and Microsoft Teams.
 
